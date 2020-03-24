@@ -8,6 +8,7 @@ import numpy as np
 from numba import njit
 
 from deepdrive_zero.constants import CACHE_NUMBA
+from deepdrive_zero.physics.bike_model import get_vehicle_dimensions
 
 pi = np.pi
 
@@ -109,7 +110,6 @@ def check_collision(obj1: tuple, ob2: tuple):
     return False
 
 
-
 def get_rect(center_x, center_y, angle, width, height):
     """
     :param angle: angle in radians
@@ -125,7 +125,7 @@ def get_rect(center_x, center_y, angle, width, height):
     return ego_rect, ego_rect_tuple
 
 
-@njit(cache=CACHE_NUMBA, nogil=True)
+# @njit(cache=CACHE_NUMBA, nogil=True)
 def _get_rect(center_x, center_y, angle, width, height):
     """
     :param angle: angle in radians
@@ -133,20 +133,60 @@ def _get_rect(center_x, center_y, angle, width, height):
             Starts at top left and goes clockwise
             top left, top right, bottom right, bottom left
     """
+
     w = width
     h = height
-    rot = np.array([[np.cos(angle), -np.sin(angle)],
-                    [np.sin(angle),  np.cos(angle)]])
-    p = np.array([[-w/2, h/2], [w/2, h/2], [w/2, -h/2], [-w/2, -h/2]])
+    L_a, L_b, rear_axle, front_axle = get_vehicle_dimensions(width)
+    # front_axle = height - rear_axle
 
-    # Rotate
-    ret = rot @ p.T
+    # Transformation matrix for transforming center to rear axle wrt inertial
+    # coordinates
+    transform_cr = np.array([[np.cos(angle), -np.sin(angle), center_x],
+                             [np.sin(angle),  np.cos(angle), center_y],
+                             [0,                          0,        1]])
 
-    # Zip up to proper shape
-    ret = np.dstack((ret[0], ret[1]))[0]
+    # Original
+    p_orig = np.array([[-w/2, h/2, 1], [w/2, h/2, 1], [w/2, -h/2, 1], [-w/2, -h/2, 1]])
+    ret_orig = np.matmul(transform_cr, p_orig.T)
 
-    # Shift
-    ret += np.array([center_x, center_y])
+    # Transform rear axle center wrt to center of car
+    cPr = [0, -L_b, 1] # How far is the rear axle center from center of vehicle?
+    sPr = np.matmul(transform_cr, cPr).reshape((3, 1))
+
+    # Transform rectangle points wrt rear axle
+    transform = np.array([[np.cos(angle), -np.sin(angle), sPr[0, 0]],
+                          [np.sin(angle),  np.cos(angle), sPr[1, 0]],
+                          [0,                          0,        1]])
+
+    p = np.array([[-w/2, front_axle, 1],
+                  [w/2, front_axle, 1],
+                  [w/2, -rear_axle, 1],
+                  [-w/2, -rear_axle, 1]])
+
+    ret = np.matmul(transform, p.T)[0:2].T
+
+    # # Rotate
+    # ret = rot @ p.T
+
+    # # Zip up to proper shape
+    # ret = np.dstack((ret[0], ret[1]))[0]
+
+    # # Shift the center
+    # rear_x = center_x - L_b
+    # rear_y = center_y
+
+    # # Shift
+    # ret += np.array([rear_x, rear_y])
+    print("w=", width, "h=", height, "La=", L_a, "Lb=", L_b, "Ra=", rear_axle, "Fa=", front_axle)
+    print("rect points")
+    print(p_orig)
+    print(p)
+    print("rect return")
+    print(ret_orig)
+    print(ret)
+
+    print("rear axle")
+    print(sPr)
 
     return ret
 

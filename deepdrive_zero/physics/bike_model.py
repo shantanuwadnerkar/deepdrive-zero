@@ -103,6 +103,18 @@ def get_vehicle_model(length):
     :param length: length of vehicle
     :return: Distance from center of gravity to front and rear axles
     """
+
+    L_a, L_b, _, _ = get_vehicle_dimensions(length)
+
+    return L_a, L_b
+
+
+def get_vehicle_dimensions(length):
+    """
+    :param length: length of vehicle
+    :return: Distance from center of gravity to front and rear axles, and
+            distance from the front and rear axles to the edge of the car
+    """
     # Bias towards the front a bit
     # https://www.fcausfleet.com/content/dam/fca-fleet/na/fleet/en_us/chrysler/2017/pacifica/vlp/docs/Pacifica_Specifications.pdf
     if USE_VOYAGE:
@@ -112,12 +124,14 @@ def get_vehicle_model(length):
 
     # Center of gravity
     center_of_gravity = (length / 2) + bias_towards_front
+
     # Approximate axles to be 1/8 (1/4 - 1/8) from ends of car
     rear_axle = length * 1 / 8
     front_axle = length - rear_axle
     L_b = center_of_gravity - rear_axle
     L_a = front_axle - center_of_gravity
-    return L_a, L_b
+
+    return L_a, L_b, front_axle, rear_axle
 
 
 def test_bike_with_friction_step():
@@ -158,4 +172,3 @@ def test_bike_with_friction_step():
     assert angle == 0
     assert speed == 0.9417362622231682
     assert angle_change == 0
-
