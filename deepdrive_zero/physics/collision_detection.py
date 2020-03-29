@@ -7,7 +7,7 @@ from typing import Type, Union, List, Tuple
 import numpy as np
 from numba import njit
 
-from deepdrive_zero.constants import CACHE_NUMBA
+from deepdrive_zero.constants import CACHE_NUMBA, VEHICLE_LENGTH, VEHICLE_WIDTH
 from deepdrive_zero.physics.bike_model import get_vehicle_dimensions
 
 pi = np.pi
@@ -126,7 +126,7 @@ def get_rect(center_x, center_y, angle, width, height):
 
 
 # @njit(cache=CACHE_NUMBA, nogil=True)
-def _get_rect(center_x, center_y, angle, width, height):
+def _get_rect(center_x, center_y, angle, width, length):
     """
     :param angle: angle in radians
     :return: 4 points of the rectangle:
@@ -135,8 +135,8 @@ def _get_rect(center_x, center_y, angle, width, height):
     """
 
     w = width
-    h = height
-    L_a, L_b, rear_axle, front_axle = get_vehicle_dimensions(width)
+    l = length
+    L_a, L_b, rear_axle, front_axle = get_vehicle_dimensions(length)
     # front_axle = height - rear_axle
 
     # Transformation matrix for transforming center to rear axle wrt inertial
@@ -146,7 +146,7 @@ def _get_rect(center_x, center_y, angle, width, height):
                              [0,                          0,        1]])
 
     # Original
-    p_orig = np.array([[-w/2, h/2, 1], [w/2, h/2, 1], [w/2, -h/2, 1], [-w/2, -h/2, 1]])
+    p_orig = np.array([[-w/2, l/2, 1], [w/2, l/2, 1], [w/2, -l/2, 1], [-w/2, -l/2, 1]])
     ret_orig = np.matmul(transform_cr, p_orig.T)
 
     # Transform rear axle center wrt to center of car
@@ -158,8 +158,8 @@ def _get_rect(center_x, center_y, angle, width, height):
                           [np.sin(angle),  np.cos(angle), sPr[1, 0]],
                           [0,                          0,        1]])
 
-    p = np.array([[-w/2, front_axle, 1],
-                  [w/2, front_axle, 1],
+    p = np.array([[-w/2, length-rear_axle, 1],
+                  [w/2, length-rear_axle, 1],
                   [w/2, -rear_axle, 1],
                   [-w/2, -rear_axle, 1]])
 
@@ -177,18 +177,33 @@ def _get_rect(center_x, center_y, angle, width, height):
 
     # # Shift
     # ret += np.array([rear_x, rear_y])
-    print("w=", width, "h=", height, "La=", L_a, "Lb=", L_b, "Ra=", rear_axle, "Fa=", front_axle)
-    print("rect points")
-    print(p_orig)
-    print(p)
-    print("rect return")
-    print(ret_orig)
+    # print("w=", width, "l=", length, "La=", L_a, "Lb=", L_b, "Ra=", rear_axle, "Fa=", front_axle)
+    # print("rect points")
+    # print(p_orig)
+    # print(p)
+    # print("rect return")
+    # print(ret_orig)
+    # print(ret)
+    #
+    # print("rear axle")
+    # print(sPr)
+
+    # print(p_orig)
+    # print(transform_cr)
+    # print(-L_b)
+    print(sPr)
+    # print(p)
     print(ret)
 
-    print("rear axle")
-    print(sPr)
-
     return ret
+
+
+def _transform(point, x, y, angle):
+    transform = np.array([[np.cos(angle), -np.sin(angle), x],
+                          [np.sin(angle),  np.cos(angle), y],
+                          [0, 0, 1]])
+
+    return np.matmul(transform, point).reshape((3, 1))[0:2]
 
 
 @njit(cache=CACHE_NUMBA, nogil=True)
@@ -246,14 +261,19 @@ def test_check_collision():
 
 
 def test_get_rect():
-    r, _ = get_rect(0, 0, pi / 2, 2, 1)
-    assert all(np.isclose(r[0], [-0.5, -1]))
+    _get_rect(0, 0, 0, VEHICLE_WIDTH, VEHICLE_LENGTH)
+    print("\n\n")
+    _get_rect(2, 2, 0, VEHICLE_WIDTH, VEHICLE_LENGTH)
 
-    r, _ = get_rect(1, 1, pi / 2, 2, 1)
-    assert all(np.isclose(r, [[0.5, 0],
-                              [0.5, 2],
-                              [1.5, 2],
-                              [1.5, 0]]).flatten())
+    # r, _ = get_rect(0, 0, pi / 2, 2, 1)
+    # assert all(np.isclose(r[0], [-0.5, -1]))
+
+    # r, _ = get_rect(1, 1, pi / 2, 2, 1)
+    # assert all(np.isclose(r, [[0.5, 0],
+    #                           [0.5, 2],
+    #                           [1.5, 2],
+    #                           [1.5, 0]]).flatten())
+
 
 
 def test_lines_intersect():
@@ -297,6 +317,8 @@ def main():
         test_check_collision()
     elif '--test_get_pair_indexes' in sys.argv:
         test_get_pairs_indexes()
+    elif '--test_get_rect' in sys.argv:
+        test_get_rect()
     else:
         print(timeit.timeit(test_lines_intersect_x2, number=1000))
 
@@ -304,4 +326,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    # below gives [2, 2]
+    print(_transform([3, 4, 1], 2, 1, 0))
