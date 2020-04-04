@@ -110,9 +110,10 @@ def get_vehicle_model(length):
     return L_a, L_b
 
 
+@njit(cache=CACHE_NUMBA, nogil=True)
 def get_vehicle_dimensions(length):
     """
-    :param length: length of vehicle
+    :param length: length of vehicle in meters
     :return: Distance from center of gravity to front and rear axles, and
             distance from the front and rear axles to the edge of the car
     """
@@ -124,15 +125,15 @@ def get_vehicle_dimensions(length):
         bias_towards_front = 0
 
     # Center of gravity
-    center_of_gravity = (length / 2) + bias_towards_front
+    center_of_gravity = (length / 2.0) + bias_towards_front
 
     # Approximate axles to be 1/8 (1/4 - 1/8) from ends of car
-    overhang_rear = length * 1 / 4.5
-    overhang_front = length * 1 / 5.4
-    L_b = center_of_gravity - overhang_rear
-    L_a = length - center_of_gravity - overhang_front
-    # print(L_a + L_b + overhang_front + overhang_rear)
-    return L_a, L_b, overhang_front, overhang_rear
+    overhang_rear = length * 1.0 / 4.5
+    overhang_front = length * 1.0 / 5.4
+    rear_axle = center_of_gravity - overhang_rear - bias_towards_front
+    front_axle = length - center_of_gravity - overhang_front
+
+    return front_axle, rear_axle, overhang_front, overhang_rear
 
 
 def test_bike_with_friction_step():
