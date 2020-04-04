@@ -8,6 +8,7 @@ from deepdrive_zero.constants import CACHE_NUMBA, MAX_STEER_CHANGE_PER_SECOND, \
 from deepdrive_zero.physics.bike_model import bike_with_friction_step
 from deepdrive_zero.logs import log
 
+
 @njit(cache=CACHE_NUMBA, nogil=True)
 def physics_step(accel, add_longitudinal_friction, add_rotational_friction,
                  brake, curr_acceleration, curr_angle, curr_angle_change,
@@ -32,6 +33,11 @@ def physics_step(accel, add_longitudinal_friction, add_rotational_friction,
                      max_accel_change, max_steer_change, n, prev_accel,
                      prev_brake,
                      prev_steer, steer, vehicle_model)
+
+
+def physics_step_n_agents():
+    pass
+
 
 @njit(cache=CACHE_NUMBA, nogil=True)
 def _step(accel, add_longitudinal_friction, add_rotational_friction, brake,
@@ -90,6 +96,10 @@ def _step(accel, add_longitudinal_friction, add_rotational_friction, brake,
             i_steer, new_velocity)
 
 
+def _step_n_agents():
+    pass
+
+
 @njit(cache=CACHE_NUMBA, nogil=True)
 def get_gforce_levels(x, y, curr_angle, prev_x, prev_y, prev_angle, dt,
                       curr_velocity, curr_accel, curr_max_gforce):
@@ -104,3 +114,11 @@ def get_gforce_levels(x, y, curr_angle, prev_x, prev_y, prev_angle, dt,
     # prev_gforce.append(self.gforce)
     jerk = (new_accel - curr_accel) / dt
     return gforce, max_gforce, jerk, new_accel, angular_velocity, curr_velocity
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__"
+    main()
